@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expense Tracker</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Chart.js for Expense Visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- jsPDF for PDF Report Generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f7f7f7;
+            margin: 0;
+            padding: 0;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        header {
+            background-color: #28a745;
+            color: white;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .container {
+            padding: 20px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .input-group {
+            margin: 10px 0;
+        }
+
+        input,
+        select,
+        button {
+            padding: 10px;
+            margin: 5px 0;
+            width: 100%;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+
+        .button {
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+
+        .button:hover {
+            background-color: #0056b3;
+        }
+
+        .form-container {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .expenses-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .expenses-list li {
+            background-color: #fff;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .expense-category {
+            font-weight: bold;
+        }
+
+        .delete-btn {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            cursor: pointer;
+            border-radius: 3px;
+        }
+
+        .delete-btn:hover {
+            background-color: #c82333;
+        }
+
+        .logout-btn {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 10px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+
+        .logout-btn:hover {
+            background-color: #c82333;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        /* Dark Mode Styles */
+        body.dark-mode {
+            background-color: #333;
+            color: #ddd;
+        }
+
+        .form-container.dark-mode {
+            background-color: #444;
+            color: #ddd;
+        }
+
+        .expenses-list li.dark-mode {
+            background-color: #555;
+            color: #ddd;
+        }
+
+        .button.dark-mode {
+            background-color: #0056b3;
+            color: white;
+        }
+
+        .button.dark-mode:hover {
+            background-color: #004080;
+        }
+
+        header.dark-mode {
+            background-color: #007bff;
+        }
+
+        /* Chart Container */
+        #chart-container {
+            margin-top: 30px;
+        }
+
+        /* Expense Filtering */
+        #filter-container {
+            margin-top: 30px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <h1>Expense Tracker</h1>
+        <button onclick="toggleDarkMode()" class="btn btn-secondary btn-sm">Toggle Dark Mode</button>
+    </header>
+
+    <div class="container">
+        <div id="user-info" class="form-container hidden">
+            <h2>Welcome, <span id="user-name"></span></h2>
+            <button class="btn btn-primary" onclick="editProfile()">Edit Profile</button>
+        </div>
+
+        <div id="login-signup-container" class="form-container">
+            <div id="login-form">
+                <h2>Login</h2>
+                <form onsubmit="login(event)">
+                    <input type="text" id="username-login" class="form-control" placeholder="Username" required><br>
+                    <input type="password" id="password-login" class="form-control" placeholder="Password" required><br>
+                    <button type="submit" class="button btn btn-primary">Login</button>
+                </form>
+                <p>Don't have an account? <button onclick="toggleForms()" class="btn btn-link">Sign Up</button></p>
+            </div>
+
+            <div id="signup-form" class="hidden">
+                <h2>Sign Up</h2>
+                <form onsubmit="signUp(event)">
+                    <input type="text" id="full-name" class="form-control" placeholder="Full Name" required><br>
+                    <input type="email" id="email" class="form-control" placeholder="Email" required><br>
+                    <input type="text" id="username-signup" class="form-control" placeholder="Username" required><br>
+                    <input type="password" id="password-signup" class="form-control" placeholder="Password" required><br>
+                    <button type="submit" class="button btn btn-primary">Sign Up</button>
+                </form>
+                <p>Already have an account? <button onclick="toggleForms()" class="btn btn-link">Login</button></p>
+            </div>
+        </div>
+
+        <div id="expense-tracker" class="hidden">
+            <h3>Track Your Expenses</h3>
+            <div class="input-group">
+                <input type="number" id="expense-amount" class="form-control" placeholder="Amount" required>
+                <select id="expense-category" class="form-control" required>
+                    <option value="Food">Food</option>
+                    <option value="Transport">Transport</option>
+                    <option value="Entertainment">Entertainment</option>
+                    <option value="Other">Other</option>
+                </select>
+                <input type="date" id="expense-date" class="form-control" required>
+                <button class="button btn btn-primary" onclick="addExpense()">Add Expense</button>
+            </div>
+
+            <h4>Expenses</h4>
+            <ul id="expense-list" class="expenses-list"></ul>
+
+            <!-- Saving Goal Form -->
+            <div class="form-container">
+                <h4>Set Your Saving Goal</h4>
+                <input type="number" id="saving-goal" class="form-control" placeholder="Enter saving goal" required><br>
+                <button class="button btn btn-primary" onclick="calculateSavings()">Calculate Potential Savings</button>
+                <h5 id="saving-message"></h5>
+            </div>
+
+            <h4>Expense Summary</h4>
+            <p>Total Expenses: $<span id="total-expenses">0.00</span></p>
+            <p>Expenses by Category:</p>
+            <ul id="category-summary"></ul>
+
+            <!-- New Feature: Expense Filtering by Date -->
+            <div id="filter-container" class="form-container">
+                <h4>Filter Expenses by Date</h4>
+                <div class="input-group">
+                    <input type="date" id="start-date" class="form-control" placeholder="Start Date">
+                    <input type="date" id="end-date" class="form-control" placeholder="End Date">
+                    <button class="button btn btn-secondary" onclick="filterExpenses()">Filter</button>
+                    <button class="button btn btn-outline-secondary" onclick="clearFilter()">Clear Filter</button>
+                </div>
+            </div>
+
+            <!-- New Feature: Expense Visualization -->
+            <div id="chart-container" class="form-container hidden">
+                <h4>Expense Visualization</h4>
+                <canvas id="expense-chart" width="400" height="200"></canvas>
+            </div>
+
+            <!-- New Feature: Generate Expense Report -->
+            <div id="report-container" class="form-container hidden">
+                <h4>Generate Expense Report</h4>
+                <button class="button btn btn-success" onclick="generateReport()">Download Report</button>
+            </div>
+        </div>
+
+        <button id="logout-btn" class="logout-btn btn btn-danger hidden" onclick="logout()">Logout</button>
+    </div>
+
+    <!-- Bootstrap JS, Popper.js -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.1/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+    <script>
+        // Toggle between login and signup forms
+        function toggleForms() {
+            const loginForm = document.getElementById("login-form");
+            const signupForm = document.getElementById("signup-form");
+            loginForm.classList.toggle("hidden");
+            signupForm.classList.toggle("hidden");
+        }
+
+        // Simulate login (after clicking login)
+        function login(event) {
+            event.preventDefault();
+            // After login success
+            document.getElementById("login-signup-container").classList.add("hidden");
+            document.getElementById("expense-tracker").classList.remove("hidden");
+            document.getElementById("logout-btn").classList.remove("hidden");
+        }
+
+        // Simulate sign-up (after clicking sign-up)
+        function signUp(event) {
+            event.preventDefault();
+            // After sign-up success
+            document.getElementById("login-signup-container").classList.add("hidden");
+            document.getElementById("expense-tracker").classList.remove("hidden");
+            document.getElementById("logout-btn").classList.remove("hidden");
+        }
+
+        // Logout function
+        function logout() {
+            document.getElementById("login-signup-container").classList.remove("hidden");
+            document.getElementById("expense-tracker").classList.add("hidden");
+            document.getElementById("logout-btn").classList.add("hidden");
+        }
+
+        // Dark Mode Toggle
+        function toggleDarkMode() {
+            document.body.classList.toggle("dark-mode");
+            document.querySelector("header").classList.toggle("dark-mode");
+            document.querySelector(".form-container").classList.toggle("dark-mode");
+            document.querySelectorAll(".expenses-list li").forEach(item => item.classList.toggle("dark-mode"));
+            document.querySelectorAll(".button").forEach(button => button.classList.toggle("dark-mode"));
+        }
+    </script>
+</body>
+
+</html> 
